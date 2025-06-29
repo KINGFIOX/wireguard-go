@@ -67,7 +67,7 @@ func main() {
 
 	var foreground bool
 	var interfaceName string
-	if len(os.Args) < 2 || len(os.Args) > 3 {
+	if len(os.Args) < 2 || len(os.Args) > 3 { // 2/3 个参数
 		printUsage()
 		return
 	}
@@ -91,6 +91,7 @@ func main() {
 		interfaceName = os.Args[1]
 	}
 
+	// 如果参数没有指定 -f, 那么还要检查环境变量
 	if !foreground {
 		foreground = os.Getenv(ENV_WG_PROCESS_FOREGROUND) == "1"
 	}
@@ -111,7 +112,7 @@ func main() {
 
 	// open TUN device (or use supplied fd)
 
-	tdev, err := func() (tun.Device, error) {
+	tdev, err := func() (tun.Device, error) { // 声明了一个匿名函数, 并立即调用, 好处是: 封装逻辑, 避免变量污染
 		tunFdStr := os.Getenv(ENV_WG_TUN_FD)
 		if tunFdStr == "" {
 			return tun.CreateTUN(interfaceName, device.DefaultMTU)
@@ -124,12 +125,12 @@ func main() {
 			return nil, err
 		}
 
-		err = unix.SetNonblock(int(fd), true)
+		err = unix.SetNonblock(int(fd), true) // 对网络设备来说, 非阻塞是标准做法
 		if err != nil {
 			return nil, err
 		}
 
-		file := os.NewFile(uintptr(fd), "")
+		file := os.NewFile(uintptr(fd), "") // 将 fd 转换成 go 的 *os.file
 		return tun.CreateTUNFromFile(file, device.DefaultMTU)
 	}()
 

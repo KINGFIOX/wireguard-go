@@ -22,7 +22,7 @@ type Logger struct {
 
 // Log levels for use with NewLogger.
 const (
-	LogLevelSilent = iota
+	LogLevelSilent = iota // iota 是一个特殊的常量, 从 0 开始, 没遇到一个新的常量声明就自动递增 1
 	LogLevelError
 	LogLevelVerbose
 )
