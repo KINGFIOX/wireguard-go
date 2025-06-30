@@ -35,7 +35,7 @@ func DiscardLogf(format string, args ...any) {}
 // It decorates log lines with the log level, date, time, and prepend.
 func NewLogger(level int, prepend string) *Logger {
 	logger := &Logger{DiscardLogf, DiscardLogf}
-	logf := func(prefix string) func(string, ...any) {
+	logf := func(prefix string) func(string, ...any) { // 这是一个返回函数的函数, 并且返回的函数, 他有一个参数列表
 		return log.New(os.Stdout, prefix+": "+prepend, log.Ldate|log.Ltime).Printf
 	}
 	if level >= LogLevelVerbose {

@@ -417,7 +417,7 @@ func (device *Device) IpcSet(uapiConf string) error {
 }
 
 func (device *Device) IpcHandle(socket net.Conn) {
-	defer socket.Close()
+	defer socket.Close() // 回收
 
 	buffered := func(s io.ReadWriter) *bufio.ReadWriter {
 		reader := bufio.NewReader(s)

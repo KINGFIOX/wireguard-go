@@ -120,7 +120,7 @@ func main() {
 
 		// construct tun device from supplied fd
 
-		fd, err := strconv.ParseUint(tunFdStr, 10, 32)
+		fd, err := strconv.ParseUint(tunFdStr, 10, 32) // 字符串转成 uint64
 		if err != nil {
 			return nil, err
 		}
@@ -134,8 +134,8 @@ func main() {
 		return tun.CreateTUNFromFile(file, device.DefaultMTU)
 	}()
 
-	if err == nil {
-		realInterfaceName, err2 := tdev.Name()
+	if err == nil { // 没发生错误
+		realInterfaceName, err2 := tdev.Name() // 可能系统会对设备进行重命名
 		if err2 == nil {
 			interfaceName = realInterfaceName
 		}
@@ -181,8 +181,8 @@ func main() {
 		env := os.Environ()
 		env = append(env, fmt.Sprintf("%s=3", ENV_WG_TUN_FD))
 		env = append(env, fmt.Sprintf("%s=4", ENV_WG_UAPI_FD))
-		env = append(env, fmt.Sprintf("%s=1", ENV_WG_PROCESS_FOREGROUND))
-		files := [3]*os.File{}
+		env = append(env, fmt.Sprintf("%s=1", ENV_WG_PROCESS_FOREGROUND)) // daemon 进程以 foreground 的方式运行, 这就可以让重新启动的进程不会进入到这个分支里面
+		files := [3]*os.File{}                                            // 声明容量为 3, 元素为 *os.File 的数组
 		if os.Getenv("LOG_LEVEL") != "" && logLevel != device.LogLevelSilent {
 			files[0], _ = os.Open(os.DevNull)
 			files[1] = os.Stdout
@@ -194,23 +194,23 @@ func main() {
 		}
 		attr := &os.ProcAttr{
 			Files: []*os.File{
-				files[0], // stdin
-				files[1], // stdout
-				files[2], // stderr
-				tdev.File(),
-				fileUAPI,
+				files[0],    // stdin
+				files[1],    // stdout
+				files[2],    // stderr
+				tdev.File(), // 文件描述符 3
+				fileUAPI,    // uapi 接口文件
 			},
 			Dir: ".",
 			Env: env,
 		}
 
-		path, err := os.Executable()
+		path, err := os.Executable() // 用户获取当前运行的可执行文件的完整路径
 		if err != nil {
 			logger.Errorf("Failed to determine executable: %v", err)
 			os.Exit(ExitSetupFailed)
 		}
 
-		process, err := os.StartProcess(
+		process, err := os.StartProcess( // 当程序以非前台
 			path,
 			os.Args,
 			attr,
@@ -219,17 +219,21 @@ func main() {
 			logger.Errorf("Failed to daemonize: %v", err)
 			os.Exit(ExitSetupFailed)
 		}
-		process.Release()
+		process.Release() // 用来释放父进程对子进程的引用, 父进程让子进程挂到守护进程下
 		return
 	}
+
+	// 能走到下面, 有两种情况: 1. 守护进程; 2. 一开始就让他以前台方式运行
 
 	device := device.NewDevice(tdev, conn.NewDefaultBind(), logger)
 
 	logger.Verbosef("Device started")
 
-	errs := make(chan error)
+	errs := make(chan error) // channel
 	term := make(chan os.Signal, 1)
 
+	// 这个 UAPI: 提供一个接口让用户可以配置 wireguard, 比方说添加 peer, 设置密钥等
+	// 通常是通过 wg 命令行工具来操作
 	uapi, err := ipc.UAPIListen(interfaceName, fileUAPI)
 	if err != nil {
 		logger.Errorf("Failed to listen on uapi socket: %v", err)
@@ -238,7 +242,7 @@ func main() {
 
 	go func() {
 		for {
-			conn, err := uapi.Accept()
+			conn, err := uapi.Accept() // 开一个线程, 监听是否有用户配置
 			if err != nil {
 				errs <- err
 				return
@@ -254,6 +258,7 @@ func main() {
 	signal.Notify(term, unix.SIGTERM)
 	signal.Notify(term, os.Interrupt)
 
+	// 这个是 io 复用, 阻塞的
 	select {
 	case <-term:
 	case <-errs:
